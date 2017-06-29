@@ -1,0 +1,32 @@
+{
+  "name": "web-quality-checker",
+  "version": "1.0.0",
+  "description": "Checks for minified CSS and JS files on websites Edit",
+  "main": "index.js",
+  "scripts": {
+    "build": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanshoover/web-quality-checker.git"
+  },
+  "keywords": [
+    "css",
+    "js",
+    "minification"
+  ],
+  "author": "Ryan Hoover",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryanshoover/web-quality-checker/issues"
+  },
+  "homepage": "https://github.com/ryanshoover/web-quality-checker#readme",
+  "dependencies": {
+    "csv": "^1.1.1",
+    "node-csv": "^0.1.2",
+    "readline-sync": "^1.4.7",
+    "request": "^2.81.0",
+    "underscore": "^1.8.3"
+  }
+}
