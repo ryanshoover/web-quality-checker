@@ -23,7 +23,9 @@
   },
   "homepage": "https://github.com/ryanshoover/web-quality-checker#readme",
   "dependencies": {
+    "babel-register": "^6.24.1",
     "csv": "^1.1.1",
+    "flow": "^0.2.3",
     "node-csv": "^0.1.2",
     "readline-sync": "^1.4.7",
     "request": "^2.81.0",
