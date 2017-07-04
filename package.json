@@ -4,7 +4,7 @@
   "description": "Checks for minified CSS and JS files on websites Edit",
   "main": "index.js",
   "scripts": {
-    "build": "node index.js",
+    "app": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -25,7 +25,9 @@
   "dependencies": {
     "babel-register": "^6.24.1",
     "csv": "^1.1.1",
+    "csv-parser": "^1.11.0",
     "flow": "^0.2.3",
+    "json2csv": "^3.7.3",
     "node-csv": "^0.1.2",
     "readline-sync": "^1.4.7",
     "request": "^2.81.0",

@@ -1,86 +1,90 @@
-const _ = require( 'underscore' )
-const csv = require( 'node-csv' ).createParser()
+const csv = require( 'csv-parser' )
 const flow = require( 'flow' )
+const fs = require( 'fs' )
+const json2csv = require( 'json2csv' )
 const read = require( 'readline-sync' )
-const request = require( 'request' )
+const api = require( __app + 'api' )
+
+function processSite( site, next ) {
+
+    flow.exec(
+        function () {
+            // Get the HTML for the page
+            api.fetchHTML( site, this )
+        },
+
+        function ( err, html ) {
+            // Get the count of unminified CSS and JS files
+            api.checkAssets( site, 'css', html, this.MULTI( 'css' ) )
+            api.checkAssets( site, 'js', html, this.MULTI( 'js' ) )
+        },
+
+        function ( res ) {
+            site.unminified_css = res.css
+            site.unminified_js = res.js
+
+            next( null, site )
+        }
+    )
+}
+
+function writeToFile( data ) {
+    var result = json2csv( {
+        data: data,
+        fields: Object.keys( data[ 0 ] )
+    } );
+
+    fs.writeFileSync( outFile, result );
+}
+
+var sites = [],
+    processed = 0
 
 // Ask for the path to the csv
-var csvFile = read.question( 'What is the path to the CSV file with the URLs? ' )
-
-// Ask for the label of the URL
-var urlColumn = read.question( 'What is the label for the column with the URL? ' )
-
-// Ask for our threshold for the lines in a minified file
-var maxLines = read.questionInt( 'How many lines should a minified file have at maximum? (default: 3) ', {
-    defaultInput: 3
+var csvFile = read.question( 'What is the path to the CSV file with the URLs? (default: test.csv) ', {
+    defaultInput: 'test.csv'
 } )
 
-csv.mapFile( csvFile, function ( err, sites ) {
-    _.each( sites, ( site, i ) => {
-        // Testing line. Remove pre-production
-        if ( 2 < i ) return
+// Ask for the path to the csv
+var outFile = read.question( 'What file should results be written to? (default: output.csv) ', {
+    defaultInput: 'output.csv'
+} )
 
-        // abort if no URL to test
-        if ( !site[ urlColumn ] || false ) return
+// Ask for the label of the URL
+var urlColumn = read.question( 'What is the label for the column with the URL? (default: URL) ', {
+    defaultInput: 'URL'
+} )
 
-        let url = site[ urlColumn ]
+fs.createReadStream( csvFile )
+    .pipe( csv() )
 
-        flow.exec(
-            function () {
-                fetchHTML( url, this )
-            },
+    .on( 'data', function ( site ) {
 
-            function ( err, results ) {
-                checkAssets( results, 'css', url, this.MULTI( 'css' ) )
-                checkAssets( results, 'js', url, this.MULTI( 'js' ) )
-            },
+        if ( !site[ urlColumn ] ) return;
 
-            function ( err, results ) {
-                updateCSV( results )
-            }
-        )
+        site.url = site[ urlColumn ]
 
-    } )
-} );
+        site.url = -1 === site.url.indexOf( /https?:\/\// ) ? 'http://' + site.url : site.url;
 
-function fetchHTML( url, next ) {
-    request( url, ( err, res, body ) => {
-        if ( err ) console.error( err )
+        site.url = site.url.replace( '*.', '' )
 
-        let html = !err ? body : '';
-
-        next( err, html )
-    } )
-}
-
-function checkAssets( results, type, baseURL next ) {
-    let urls = []
-    let errs = []
-    let count = 0
-    let domain = baseURL.match( /https?:\/\/([/w\.]+\.[\w]{2,15}).*/i )
-    let reType = new RegExp( "href=['\"]((?:https?:)?\/\/" + domain[ 0 ] + ".+\." + type + ")['\"]" )
-
-    while ( match = reType.exec( results.html[ 0 ] ) ) {
-        urls.push( match[ 1 ] )
-    }
-
-    _.each( urls, ( url ) => {
-        request( url, ( err, res, body ) => {
-            if ( err ) {
-                console.error( err )
-                errs.push( err )
-                return
-            }
-
-            let lines = body.split( /\r\n|\r|\n/ ).length
-
-            if ( lines > maxLines ) count++
-        } )
+        sites.push( site );
     } )
 
-    next( errs, count )
-}
+    .on( 'end', function () {
+        flow.serialForEach( sites, function ( site ) {
 
-function updateCSV( results ) {
-    console.log( results )
-}
+            processSite( site, this )
+
+        }, function ( err, site ) {
+
+            ++processed
+            if ( !processed % 1000 ) console.log( 'Processed sites: ', processed )
+
+        }, function () {
+
+            writeToFile( sites )
+
+        } );
+
+    } );
