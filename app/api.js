@@ -1,10 +1,8 @@
 const _ = require( 'underscore' )
 const request = require( 'request' )
+const config = require( __app + 'config' )
 
 api = {}
-
-// What's the maximum number of lines in a minified file
-maxLines = 3;
 
 module.exports = api
 
@@ -21,21 +19,22 @@ api.fetchHTML = function ( site, next ) {
 api.checkAssets = function ( site, type, html, next ) {
 
     let urls = [],
+        count = 0,
         gutCheck = 20,
-        domain = site.url.match( /(?:https?:\/\/)?([\w-\.]+\.[a-zA-Z]{2,15}).*/i )
+        domainrgx = site.url.match( /(?:https?:\/\/)?([\w-\.]+\.[a-zA-Z]{2,15}).*/i )
 
-    let domainre = domain[ 1 ].replace( '.', '\\.' )
+    let domain = domainrgx[ 1 ].replace( '.', '\\.' )
 
-    let typeExpression = "(?:href|src)=['\"]((?:https?:)?\\/\\/[\\w\\.]*?" + domainre + "\/[^'\"]+\\." + type + ")[^'\"]*?['\"]"
+    let typeExpression = "(?:href|src)=['\"]((?:https?:)?\\/\\/[\\w\\.]*?" + domain + "\/[^'\"]+\\." + type + ")[^'\"]*?['\"]"
 
     let reType = new RegExp( typeExpression, "ig" )
 
-    while ( match = reType.exec( html ) && gutCheck ) {
-        --gutCheck
-        urls.push( match[ 1 ] )
-    }
+    while ( match = reType.exec( html ) ) {
 
-    let count = 0
+        urls.push( match[ 1 ] )
+
+        if ( !--gutCheck ) break;
+    }
 
     let waiting = urls.length
 
@@ -51,9 +50,9 @@ api.checkAssets = function ( site, type, html, next ) {
 
             if ( err ) console.error( err )
 
-            if ( body && maxLines < body.split( /\r\n|\r|\n/ ).length ) ++count
+            if ( body && config.maxLines < body.split( /\r\n|\r|\n/ ).length ) ++count
 
-            if ( 0 == waiting ) next( count );
+            if ( 1 > waiting ) next( count );
         } )
     } )
 }
