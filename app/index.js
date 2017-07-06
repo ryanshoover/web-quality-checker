@@ -1,9 +1,10 @@
+const _ = require( 'underscore' )
 const csv = require( 'csv-parser' )
 const flow = require( 'flow' )
 const fs = require( 'fs' )
 const json2csv = require( 'json2csv' )
 const read = require( 'readline-sync' )
-const api = require( __app + 'api' )
+const processor = require( __app + 'processor' )
 const config = require( __app + 'config' )
 
 function processSite( site, next ) {
@@ -11,18 +12,24 @@ function processSite( site, next ) {
     flow.exec(
         function () {
             // Get the HTML for the page
-            api.fetchHTML( site, this )
+            processor.fetchHTML( site, this )
         },
 
         function ( err, html ) {
-            // Get the count of unminified CSS and JS files
-            api.checkAssets( site, 'css', html, this.MULTI( 'css' ) )
-            // api.checkAssets( site, 'js', html, this.MULTI( 'js' ) )
+
+            // Get the count of unminified files
+            _.each( config.types, ( type ) => {
+                processor.checkAssets( site, type, html, this.MULTI( type ) )
+            } )
+
         },
 
         function ( res ) {
-            site.unminified_css = res.css
-            // site.unminified_js = res.js
+
+            // Save the count of unminified files
+            _.each( config.types, ( type ) => {
+                site[ 'unminified_' + type ] = res[ type ]
+            } )
 
             next( null, site )
         }
@@ -34,29 +41,27 @@ function skipSite( site, next ) {
 }
 
 var sites = [],
-    processed = 0,
-    active = false
+    processed = 0
 
 // Ask for the path to the csv
-var csvFile = read.question( 'What is the path to the CSV file with the URLs? ', {
+var csvFile = read.question( 'What is the path to the CSV file with the URLs?   ', {
     defaultInput: config.defaultInputFile
 } )
 
 // Ask for the path to the csv
-var outFile = read.question( 'What file should results be written to? ', {
+var outFile = read.question( 'What file should results be written to?           ', {
     defaultInput: config.defaultOutputFile
 } )
 
 fs.createReadStream( csvFile )
+
     .pipe( csv() )
 
     .on( 'data', function ( site ) {
 
         if ( !site[ config.urlColumn ] ) return;
 
-        site.url = site[ config.urlColumn ]
-
-        site.url = site.url.replace( '*.', '' )
+        site.url = site[ config.urlColumn ].replace( '*.', '' )
 
         site.url = -1 === site.url.indexOf( /https?:\/\// ) ? 'http://' + site.url : site.url;
 
@@ -77,8 +82,9 @@ fs.createReadStream( csvFile )
         if ( !outputBuffer.length ) {
             let fields = Object.keys( sites[ 0 ] )
 
-            fields.push( 'unminified_css' )
-            // fields.push( 'unminified_js' )
+            _.each( config.types, ( type ) => {
+                fields.push( 'unminified_' + type )
+            } )
 
             let csvHeaders = json2csv( {
                 data: {},
@@ -94,29 +100,23 @@ fs.createReadStream( csvFile )
         flow.serialForEach( sites, function ( site ) {
             // Run on each site
 
-            if ( !active && outputBuffer.includes( site.url ) ) {
-                active = true
-            }
-
-            // If our URL is in the output file, abort
-            if ( active ) {
-                processSite( site, this )
-
-            } else {
+            if ( outputBuffer.includes( site.url ) ) {
                 skipSite( site, this )
+            } else {
+                processSite( site, this )
             }
 
         }, function ( err, site ) {
             // After each site has finished
 
             // If our URL is in the output file, abort
-            if ( -1 < outputBuffer.includes( site.url ) ) {
+            if ( outputBuffer.includes( site.url ) ) {
                 return
             }
 
             ++processed
 
-            if ( !processed % 250 ) console.log( "Processed sites: ", processed )
+            if ( !processed % 10 ) console.log( "Processed sites: ", processed )
 
             let csvSite = json2csv( {
                 data: site,
@@ -129,6 +129,7 @@ fs.createReadStream( csvFile )
 
         }, function () {
             // After all sites have finished
+
             fs.close( file )
 
         } );

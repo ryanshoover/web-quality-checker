@@ -2,11 +2,11 @@ const _ = require( 'underscore' )
 const request = require( 'request' )
 const config = require( __app + 'config' )
 
-api = {}
+processor = {}
 
-module.exports = api
+module.exports = processor
 
-api.fetchHTML = function ( site, next ) {
+processor.fetchHTML = function ( site, next ) {
 
     request( site.url, ( err, res, body ) => {
         if ( err ) console.error( err )
@@ -16,7 +16,7 @@ api.fetchHTML = function ( site, next ) {
 
 }
 
-api.checkAssets = function ( site, type, html, next ) {
+processor.checkAssets = function ( site, type, html, next ) {
 
     let urls = [],
         count = 0,
