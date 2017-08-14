@@ -2,13 +2,23 @@ const _ = require( 'underscore' )
 const request = require( 'request' )
 const config = require( __app + 'config' )
 
+function debug( a, b, c, d ) {
+    if ( config.debug ) {
+        console.error( 'DEBUG', a, b, c, d )
+    }
+}
+
 processor = {}
 
 module.exports = processor
 
 processor.fetchHTML = function ( site, next ) {
+    debug( 'pre request', site.url )
 
-    request( site.url, ( err, res, body ) => {
+    request( site.url, {}, function ( err, res, body ) {
+
+        debug( 'post request', err, body )
+
         if ( err ) console.error( err )
 
         next( err, ( !err ? body : '' ) )

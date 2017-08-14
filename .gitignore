@@ -1,3 +1,7 @@
+# CSV files
+*.csv
+!test.csv    # Allow our test file
+
 # Logs
 logs
 *.log
@@ -57,3 +61,5 @@ typings/
 # dotenv environment variables file
 .env
 
+# App config files
+.editorconfig
